@@ -1,4 +1,9 @@
-flask
+flask-bcrypt
+flask-login
 flask-wtf
 flask-sqlalchemy
-flask-login
+flask-limiter
+pyotp
+qrcode
+pillow
+
