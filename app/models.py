@@ -11,6 +11,7 @@ class User(UserMixin, db.Model):
     failed_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, nullable=True)
     mfa_enabled = db.Column(db.Boolean, default=False)
+    mfa_secret = db.Column(db.String(32), nullable=True)
     last_login_at = db.Column(db.DateTime, nullable=True)
     last_login_ip = db.Column(db.String(45), nullable=True)
 

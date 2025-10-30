@@ -1,4 +1,8 @@
+import base64
+import io
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session
+import pyotp
+import qrcode
 from app.models import User
 from urllib.parse import urlparse
 from flask_login import current_user, login_user, logout_user, login_required
@@ -61,11 +65,18 @@ def login():
         user.locked_until = None
         db.session.commit()
         
+        if user.mfa_enabled:
+            session['pending_mfa_user_id'] = user.id
+            return redirect(url_for('main.mfa_verify'))
+        elif not user.mfa_secret:
+            session['pending_mfa_user_id'] = user.id
+            return redirect(url_for('main.mfa_setup'))
+        
         session.clear()  
         login_user(user, remember=False, fresh=True)  
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
-            next_page = url_for('index')
+            next_page = url_for('main.dashboard')
         return redirect(next_page)
     
     if request.method == 'GET' and form.username.data:
@@ -75,12 +86,101 @@ def login():
     
     return render_template('login.html', title='Sign In', form=form, show_captcha=show_captcha)
 
+@main.route('/mfa/setup', methods=['GET', 'POST'])
+def mfa_setup():
+    from forms import MFAVerifyForm
+    import qrcode
+    from io import BytesIO
+    import base64
+    
+    user_id = session.get('pending_mfa_user_id')
+    if not user_id:
+        flash('Please Login First.', 'warning')
+        return redirect(url_for('main.login'))
+    
+    user = User.query.get(user_id)
+    if not user:
+        session.pop('pending_mfa_user_id', None)
+        return redirect(url_for('main.login'))
+    
+    if not user.mfa_secret:
+        user.mfa_secret = pyotp.random_base32()
+        db.session.commit()
+    
+    form = MFAVerifyForm()
+    
+    if form.validate_on_submit():
+        totp = pyotp.TOTP(user.mfa_secret)
+        if totp.verify(form.totp_code.data, valid_window=1):
+            user.mfa_enabled = True
+            db.session.commit()
+            
+            session.pop('pending_mfa_user_id', None)
+            session.clear()
+            login_user(user, remember=False, fresh=True)
+            
+            flash('MFA has been successfully enabled!', 'success')
+            return redirect(url_for('main.dashboard'))
+        else:
+            logging.warning(f'Invalid MFA setup code for user {user.username} from IP {request.remote_addr}')
+            flash('Invalid code. Please try again.', 'danger')
+    
+    totp_uri = pyotp.totp.TOTP(user.mfa_secret).provisioning_uri(
+        name=user.username,
+        issuer_name="CSC2031 App"
+    )
+    
+    qr = qrcode.make(totp_uri)
+    buffer = BytesIO()
+    qr.save(buffer, format='PNG')
+    qr_b64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return render_template('mfa_setup.html', 
+                         form=form,
+                         qr_code=qr_b64,
+                         secret=user.mfa_secret)
+
+
+@main.route('/mfa/verify', methods=['GET', 'POST'])
+def mfa_verify():
+    """MFA Verification - Check TOTP code during login"""
+    from forms import MFAVerifyForm
+    
+    user_id = session.get('pending_mfa_user_id')
+    if not user_id:
+        flash('Please login first.', 'warning')
+        return redirect(url_for('main.login'))
+    
+    user = User.query.get(user_id)
+    if not user or not user.mfa_enabled:
+        session.pop('pending_mfa_user_id', None)
+        return redirect(url_for('main.login'))
+    
+    form = MFAVerifyForm()
+    
+    if form.validate_on_submit():
+        totp = pyotp.TOTP(user.mfa_secret)
+        if totp.verify(form.totp_code.data, valid_window=1):
+            session.pop('pending_mfa_user_id', None)
+            session.clear()
+            login_user(user, remember=False, fresh=True)
+            
+            flash('Login successful!', 'success')
+            return redirect(url_for('main.dashboard'))
+        else:
+            logging.warning(f'Invalid MFA code for user {user.username} from IP {request.remote_addr}')
+            flash('Invalid authentication code. Please try again.', 'danger')
+    
+    return render_template('mfa_verify.html', form=form, username=user.username)
+
 @main.route('/dashboard')
+@login_required
 def dashboard():
     return render_template('dashboard.html')
 
 @main.route('/logout')
+@login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('main.login'))
 

@@ -15,7 +15,7 @@ class MFASetupForm(FlaskForm):
     submit = SubmitField('Enable MFA')
 
 class MFAVerifyForm(FlaskForm):
-    totpCode = StringField('Authentication Code', validators=[DataRequired()])
+    totp_code = StringField('Authentication Code', validators=[DataRequired()])
     submit = SubmitField('Verify')
 
 class LogoutForm(FlaskForm):
