@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import ValidationError, DataRequired, Email, EqualTo
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired
 from models import User
 
 
@@ -9,7 +9,8 @@ class LoginForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
     CSRF = True  
-    LoginForm should optionally include a RecaptchaField (but only render it after 3 failures—controlled in the route/template).
+    RecaptchaField = None
+    #LoginForm should optionally include a RecaptchaField (but only render it after 3 failures—controlled in the route/template).
 
 class MFASetupForm(FlaskForm):
     submit = SubmitField('Enable MFA')
