@@ -1,20 +1,30 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session
 from app.models import User
+from urllib.parse import urlparse
+from flask_login import current_user, login_user, logout_user, login_required
+from app import db
+from forms import LoginForm
+
 
 main = Blueprint('main', __name__)
 
-@main.route('/', methods=['GET', 'POST'])
+@main.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user = User.query.filter_by(username=username).first()
-        if user and user.password == password:
-            flash('Login successful!')
-            return redirect(url_for('main.dashboard'))
-        else:
-            flash('Invalid username or password.')
-    return render_template('login.html')
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is None or not user.check_password(form.password.data):
+            flash('Invalid username or password')
+            return redirect(url_for('main.login'))
+        session.clear()  
+        login_user(user, remember=False, fresh=True)  
+        next_page = request.args.get('next')
+        if not next_page or urlparse(next_page).netloc != '':
+            next_page = url_for('index')
+        return redirect(next_page)
+    return render_template('login.html', title='Sign In', form=form)
 
 @main.route('/dashboard')
 def dashboard():
@@ -22,4 +32,6 @@ def dashboard():
 
 @main.route('/logout')
 def logout():
-    return redirect(url_for('main.login'))
+    logout_user()
+    return redirect(url_for('login'))
+
