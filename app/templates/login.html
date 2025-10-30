@@ -2,18 +2,46 @@
 {% block content %}
 <center>
 <h2>Login</h2>
-<form method="POST" novalidate>
-    <label for="username">Username:</label>
-    <input type="text" name="username" id="username"><br>
-    <label for="password">Password:</label>
-    <input type="password" name="password" id="password"><br>
-    <input type="submit" value="Login">
-</form>
 
-{% with messages = get_flashed_messages() %}
-{% for message in messages %}
-<p style="color:red;">{{ message }}</p>
-{% endfor %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+    {% for category, message in messages %}
+    <p style="color: {% if category == 'danger' %}red{% elif category == 'warning' %}orange{% else %}blue{% endif %};">{{ message }}</p>
+    {% endfor %}
+{% endif %}
 {% endwith %}
+
+<form method="POST" novalidate>
+    {{ form.hidden_tag() }}
+    
+    <label for="username">Username:</label>
+    {{ form.username(size=32) }}<br>
+    {% if form.username.errors %}
+        {% for error in form.username.errors %}
+        <span style="color: red;">{{ error }}</span><br>
+        {% endfor %}
+    {% endif %}
+    
+    <label for="password">Password:</label>
+    {{ form.password(size=32) }}<br>
+    {% if form.password.errors %}
+        {% for error in form.password.errors %}
+        <span style="color: red;">{{ error }}</span><br>
+        {% endfor %}
+    {% endif %}
+    
+    {% if show_captcha %}
+    <div style="margin: 10px 0;">
+        {{ form.recaptcha }}
+        {% if form.recaptcha.errors %}
+            {% for error in form.recaptcha.errors %}
+            <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {{ form.submit() }}
+</form>
 </center>
 {% endblock %}
