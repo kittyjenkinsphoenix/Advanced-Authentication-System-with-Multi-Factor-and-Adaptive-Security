@@ -205,3 +205,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+app/__pycache__/__init__.cpython-311.pyc
+app/__pycache__/__init__.cpython-311.pyc
+app/__pycache__/models.cpython-311.pyc
