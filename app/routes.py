@@ -2,13 +2,14 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from app.models import User
 from urllib.parse import urlparse
 from flask_login import current_user, login_user, logout_user, login_required
-from app import db
+from app import db, limiter
 from forms import LoginForm
 
 
 main = Blueprint('main', __name__)
 
-@main.route('/login', methods=['GET', 'POST'])
+@limiter.limit("7 per minute")
+@main.route('/login', methods=['GET', 'POST']) 
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))

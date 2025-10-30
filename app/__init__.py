@@ -10,10 +10,8 @@ from config import Config
 db = SQLAlchemy()
 login = LoginManager()
 csrf = CSRFProtect()
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
+limiter = Limiter(key_func=get_remote_address)
+
 login.login_view = 'main.login'
 
 def create_app():
@@ -32,14 +30,9 @@ def create_app():
     app.register_blueprint(main)
 
     from .models import User
-    from flask_limiter import Limiter
 
-    def get_remote_address():
-        from flask import request
-        return request.remote_addr
-
-    @login_manager.user_loader
-    def loadUser(user_id):
+    @login.user_loader
+    def load_user(user_id):
         return User.query.get(int(user_id))
 
     return app
