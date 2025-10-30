@@ -7,7 +7,7 @@ from app.models import User
 from urllib.parse import urlparse
 from flask_login import current_user, login_user, logout_user, login_required
 from app import db, limiter
-from forms import LoginForm
+from forms import LoginForm, LogoutForm
 from datetime import datetime, timedelta, timezone
 import logging
 
@@ -176,11 +176,15 @@ def mfa_verify():
 @main.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html')
+    logout_form = LogoutForm()
+    return render_template('dashboard.html', logout_form=logout_form)
 
-@main.route('/logout')
+@main.route('/logout', methods=['POST'])
 @login_required
 def logout():
+    logging.info(f"User {current_user.username} logged out from IP {request.remote_addr}")
     logout_user()
+    session.clear()
+    flash('You have been logged out.', 'info')
     return redirect(url_for('main.login'))
 

@@ -1,7 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Welcome</h2>
-<p>This is your dashboard.</p>
+<form method="POST" action="{{ url_for('main.logout') }}" style="margin-top: 12px;">
+        {{ logout_form.hidden_tag() }}
+        <button type="submit">Logout</button>
+</form>
+
+<p>This Is Your Dashboard.</p>
 
 {% with messages = get_flashed_messages() %}
 {% for message in messages %}
