@@ -10,9 +10,13 @@ from app import db, limiter
 from forms import LoginForm, LogoutForm
 from datetime import datetime, timedelta, timezone
 import logging
+import json
 
 
 main = Blueprint('main', __name__)
+
+def get_client_ip():
+    return request.headers.get('X-Forwarded-For', request.remote_addr)
 
 @limiter.limit("7 per minute")
 @main.route('/login', methods=['GET', 'POST']) 
@@ -40,18 +44,37 @@ def login():
         
         if user and user.failed_attempts >= 3 and user.failed_attempts < 5:
             show_captcha = True
+            if not show_captcha:  
+                logging.info(json.dumps({
+                    "event": "captcha_trigger",
+                    "username": user.username,
+                    "client_ip": get_client_ip(),
+                    "failed_attempts": user.failed_attempts
+                }))
             if form.recaptcha.errors:
                 flash('Please Complete The CAPTCHA Verification Correctly.', 'warning')
                 return render_template('login.html', title='Sign In', form=form, show_captcha=show_captcha)
         
         if user is None or not user.check_password(form.password.data):
+            logging.warning(json.dumps({
+                "event": "password_failure",
+                "username": form.username.data,
+                "client_ip": get_client_ip(),
+                "user_exists": user is not None
+            }))
+            
             if user:
                 user.failed_attempts += 1
                 
                 if user.failed_attempts >= 5:
                     user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=5)
                     user.failed_attempts = 0
-                    logging.warning(f'Account Locked For User {user.username} Due To Excessive Failed Login Attempts From IP {request.remote_addr}')
+                    logging.warning(json.dumps({
+                        "event": "account_lockout",
+                        "username": user.username,
+                        "client_ip": get_client_ip(),
+                        "reason": "excessive_failed_attempts"
+                    }))
                     flash('Too Many Failed Login Attempts. Account Locked For 5 Minutes.', 'danger')
                     db.session.commit()
                     return redirect(url_for('main.login'))
@@ -73,7 +96,13 @@ def login():
             return redirect(url_for('main.mfa_setup'))
         
         session.clear()  
-        login_user(user, remember=False, fresh=True)  
+        login_user(user, remember=False, fresh=True)
+        logging.info(json.dumps({
+            "event": "login_success",
+            "username": user.username,
+            "client_ip": get_client_ip(),
+            "mfa_enabled": False
+        }))
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
             next_page = url_for('main.dashboard')
@@ -119,11 +148,21 @@ def mfa_setup():
             session.clear()
             login_user(user, remember=False, fresh=True)
             
-            flash('MFA has been successfully enabled!', 'success')
+            logging.info(json.dumps({
+                "event": "mfa_setup_success",
+                "username": user.username,
+                "client_ip": get_client_ip()
+            }))
+            flash('MFA Has Been Successfully Enabled!', 'success')
             return redirect(url_for('main.dashboard'))
         else:
-            logging.warning(f'Invalid MFA setup code for user {user.username} from IP {request.remote_addr}')
-            flash('Invalid code. Please try again.', 'danger')
+            logging.warning(json.dumps({
+                "event": "invalid_totp",
+                "context": "mfa_setup",
+                "username": user.username,
+                "client_ip": get_client_ip()
+            }))
+            flash('Invalid Code. Please Try Again.', 'danger')
     
     totp_uri = pyotp.totp.TOTP(user.mfa_secret).provisioning_uri(
         name=user.username,
@@ -143,12 +182,11 @@ def mfa_setup():
 
 @main.route('/mfa/verify', methods=['GET', 'POST'])
 def mfa_verify():
-    """MFA Verification - Check TOTP code during login"""
     from forms import MFAVerifyForm
     
     user_id = session.get('pending_mfa_user_id')
     if not user_id:
-        flash('Please login first.', 'warning')
+        flash('Please Login First.', 'warning')
         return redirect(url_for('main.login'))
     
     user = User.query.get(user_id)
@@ -165,11 +203,22 @@ def mfa_verify():
             session.clear()
             login_user(user, remember=False, fresh=True)
             
-            flash('Login successful!', 'success')
+            logging.info(json.dumps({
+                "event": "login_success",
+                "username": user.username,
+                "client_ip": get_client_ip(),
+                "mfa_enabled": True
+            }))
+            flash('Login Successful!', 'success')
             return redirect(url_for('main.dashboard'))
         else:
-            logging.warning(f'Invalid MFA code for user {user.username} from IP {request.remote_addr}')
-            flash('Invalid authentication code. Please try again.', 'danger')
+            logging.warning(json.dumps({
+                "event": "invalid_totp",
+                "context": "mfa_verify",
+                "username": user.username,
+                "client_ip": get_client_ip()
+            }))
+            flash('Invalid Authentication Code. Please Try Again.', 'danger')
     
     return render_template('mfa_verify.html', form=form, username=user.username)
 
@@ -182,7 +231,11 @@ def dashboard():
 @main.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    logging.info(f"User {current_user.username} Logged Out From IP {request.remote_addr}")
+    logging.info(json.dumps({
+        "event": "logout",
+        "username": current_user.username,
+        "client_ip": get_client_ip()
+    }))
     logout_user()
     session.clear()
     flash('You Have Been Logged Out.', 'info')
