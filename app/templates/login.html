@@ -3,14 +3,6 @@
 <center>
 <h2>Login</h2>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-    {% for category, message in messages %}
-    <p style="color: {% if category == 'danger' %}red{% elif category == 'warning' %}orange{% else %}blue{% endif %};">{{ message }}</p>
-    {% endfor %}
-{% endif %}
-{% endwith %}
-
 <form method="POST" novalidate>
     {{ form.hidden_tag() }}
     
@@ -30,7 +22,7 @@
         {% endfor %}
     {% endif %}
     
-    {% if show_captcha %}
+    {% if showCaptcha %}
     <div style="margin: 10px 0;">
         {{ form.recaptcha }}
         {% if form.recaptcha.errors %}

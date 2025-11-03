@@ -1,17 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
-<div style="text-align: center; max-width: 500px; margin: 100px auto;">
+<div style="text-align: center; max-width: 500px; margin: 50px auto;">
     <h2>Multi-Factor Authentication</h2>
-    
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-        <p style="color: {% if category == 'danger' %}red{% elif category == 'warning' %}orange{% elif category == 'success' %}green{% else %}blue{% endif %};">
-            {{ message }}
-        </p>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
     
     <p>Welcome, <strong>{{ username }}</strong></p>
     <p>Enter The 6-Digit Code From Your Authenticator App:</p>
@@ -20,9 +10,9 @@
         {{ form.hidden_tag() }}
         
         <div style="margin: 20px 0;">
-            {{ form.totp_code(size=10, placeholder="000000", style="font-size: 24px; text-align: center; padding: 12px; letter-spacing: 5px;") }}
-            {% if form.totp_code.errors %}
-                {% for error in form.totp_code.errors %}
+            {{ form.totpCode(size=10, placeholder="XXXXXX", style="font-size: 24px; text-align: center; padding: 12px; letter-spacing: 5px;") }}
+            {% if form.totpCode.errors %}
+                {% for error in form.totpCode.errors %}
                 <br><span style="color: red;">{{ error }}</span>
                 {% endfor %}
             {% endif %}
@@ -32,6 +22,6 @@
     </form>
     
     <br><br>
-    <a href="{{ url_for('main.login') }}" style="color: #666;">Cancel and return to login</a>
+    <a href="{{ url_for('main.login') }}" style="color: #666;">Cancel And Return To Login</a>
 </div>
 {% endblock %}
