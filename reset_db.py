@@ -1,15 +1,20 @@
+# Imported Necessary Libraries
 import os
 from app import createApp, db
 from app.models import User
 
+# Define Database Path
 dbPath = 'instance/users.db'
 
+# Remove Existing Database If It Exists
 if os.path.exists(dbPath):
     os.remove(dbPath)
     print("Existing Database Deleted.")
 
+# Create Application And Initialise Database
 app = createApp()
 
+# Create All Database Tables And Seed Default Users
 with app.app_context():
     db.create_all()
     if User.query.count() == 0:
