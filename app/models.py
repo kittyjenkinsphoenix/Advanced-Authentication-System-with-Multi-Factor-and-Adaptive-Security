@@ -1,8 +1,7 @@
 # Imported Necessary Libraries
-from app import db, login
+from app import db, login, bcrypt
 from flask_login import UserMixin
 from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
 
 # Define User Model
 class User(UserMixin, db.Model):
@@ -17,13 +16,13 @@ class User(UserMixin, db.Model):
     lastLoginAt = db.Column(db.DateTime, nullable=True)
     lastLoginIp = db.Column(db.String(45), nullable=True)
 
-    # Password Hashing Methods
+    # Password Hashing Methods (using bcrypt with 12 rounds for strong security) Copilot
     def setPassword(self, password):
-        self.passwordHash = generate_password_hash(password)
+        self.passwordHash = bcrypt.generate_password_hash(password).decode('utf-8')
 
     # Check Password Method
     def checkPassword(self, password):
-        return check_password_hash(self.passwordHash, password)
+        return bcrypt.check_password_hash(self.passwordHash, password)
 
 # User Loader Callback
 @login.user_loader

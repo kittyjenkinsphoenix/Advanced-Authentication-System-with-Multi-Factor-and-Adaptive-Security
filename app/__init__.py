@@ -5,6 +5,7 @@ from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_bcrypt import Bcrypt
 from config import Config
 import logging
 from logging.handlers import RotatingFileHandler
@@ -25,6 +26,7 @@ db = SQLAlchemy()
 login = LoginManager()
 csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address)
+bcrypt = Bcrypt()
 
 login.login_view = 'main.login'
 
@@ -54,6 +56,7 @@ def createApp():
     csrf.init_app(app)
     login.init_app(app)
     limiter.init_app(app)
+    bcrypt.init_app(app)
 
     login.login_view = 'main.login'
     login.session_protection = "strong"
